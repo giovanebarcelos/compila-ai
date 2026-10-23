@@ -9,14 +9,6 @@ class Token {
     public static final int TIMES = 2;
     public static final int MINUS = 3;
     public static final int DIVIDE = 4;
-    public static final int NUMBER US = 1;
-    public static final int TIMES = 2;
-    public static final int MINUS = 3;
-    public static final int DIVIDE = 4;
-    public static final int NUMBER US = 1;
-    public static final int TIMES = 2;
-    public static final int MINUS = 3;
-    public static final int DIVIDE = 4;
     public static final int NUMBER = 5;
     public static final int LPAREN = 6;
     public static final int RPAREN = 7;
@@ -71,7 +63,7 @@ DIGIT = [0-9]
 NUMBER = {DIGIT}+
 WHITESPACE = [ \t\r\n]+
 LETTER = [a-zA-Z]
-ID = [{LETTER}_][{LETTER}{DIGIT}_]*
+ID = ({LETTER}|_)({LETTER}|{DIGIT}|_)*
 
 %% // regras léxicas/scanner/query
 "+" { return new Token(Token.PLUS); }
