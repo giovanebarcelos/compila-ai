@@ -9,6 +9,14 @@ class Token {
     public static final int TIMES = 2;
     public static final int MINUS = 3;
     public static final int DIVIDE = 4;
+    public static final int NUMBER US = 1;
+    public static final int TIMES = 2;
+    public static final int MINUS = 3;
+    public static final int DIVIDE = 4;
+    public static final int NUMBER US = 1;
+    public static final int TIMES = 2;
+    public static final int MINUS = 3;
+    public static final int DIVIDE = 4;
     public static final int NUMBER = 5;
     public static final int LPAREN = 6;
     public static final int RPAREN = 7;
@@ -54,7 +62,7 @@ class Token {
       Token token;
 
       while ((token = s.yylex()) != null){
-          System.out.println(s.yyline + " -> " + token);
+          System.out.println((s.yyline + 1) + " -> " + token);
       }
   }
 %}

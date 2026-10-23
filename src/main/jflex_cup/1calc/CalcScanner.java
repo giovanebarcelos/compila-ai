@@ -316,7 +316,7 @@ public class CalcScanner {
       Token token;
 
       while ((token = s.yylex()) != null){
-          System.out.println(s.yyline + " -> " + token);
+          System.out.println((s.yyline + 1) + " -> " + token);
       }
   }
 
