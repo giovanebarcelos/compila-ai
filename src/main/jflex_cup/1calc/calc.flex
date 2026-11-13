@@ -1,4 +1,4 @@
-class Token {
+class CalcToken {
     public static final String[] TOKEN_NAMES = {
             "", "PLUS", "TIMES",
             "MINUS", "DIVIDE", "NUMBER",
@@ -18,17 +18,17 @@ class Token {
     public final int tipo;
     public final String  lexema;
 
-    public Token(int tipo, String lexema) {
+    public CalcToken(int tipo, String lexema) {
         this.tipo = tipo;
         this.lexema = lexema;
     }
 
-    public Token(int tipo) {
+    public CalcToken(int tipo) {
         this( tipo, null);
     }
 
     public static String nome(int tipo){
-        return Token.TOKEN_NAMES[tipo];
+        return CalcToken.TOKEN_NAMES[tipo];
     }
 
     @Override
@@ -43,15 +43,15 @@ class Token {
 %unicode
 %line
 %column
-%type Token
+%type CalcToken
 %eofval{
-    return new Token(Token.EOF);
+    return new CalcToken(CalcToken.EOF);
 %eofval}
 
 %{
   public static void main(String args[]) throws java.io.IOException{
       CalcScanner s = new CalcScanner(new java.io.FileReader(args[0]));
-      Token token;
+      CalcToken token;
 
       while ((token = s.yylex()) != null){
           System.out.println((s.yyline + 1) + " -> " + token);
@@ -66,14 +66,14 @@ LETTER = [a-zA-Z]
 ID = ({LETTER}|_)({LETTER}|{DIGIT}|_)*
 
 %% // regras léxicas/scanner/query
-"+" { return new Token(Token.PLUS); }
-"*" { return new Token(Token.TIMES); }
-"-" { return new Token(Token.MINUS); }
-"/" { return new Token(Token.DIVIDE); }
-"(" { return new Token(Token.LPAREN); }
-")" { return new Token(Token.RPAREN); }
-{ID} { return new Token(Token.ID, yytext()); }
-{NUMBER} { return new Token(Token.NUMBER, yytext() ); }
+"+" { return new CalcToken(CalcToken.PLUS); }
+"*" { return new CalcToken(CalcToken.TIMES); }
+"-" { return new CalcToken(CalcToken.MINUS); }
+"/" { return new CalcToken(CalcToken.DIVIDE); }
+"(" { return new CalcToken(CalcToken.LPAREN); }
+")" { return new CalcToken(CalcToken.RPAREN); }
+{ID} { return new CalcToken(CalcToken.ID, yytext()); }
+{NUMBER} { return new CalcToken(CalcToken.NUMBER, yytext() ); }
 {WHITESPACE} { /* IGNORE */ }
 [^] { throw new Error("Invalid character '" + yytext() + "' na linha " +
                       (yyline + 1) + ", coluna " + (yycolumn + 1)); }
