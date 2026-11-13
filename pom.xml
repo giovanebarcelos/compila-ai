@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>br.com.ulife</groupId>
+    <artifactId>Compilador</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <antlr.version>4.13.2</antlr.version>
+        <cup.version>11b-20160615</cup.version>
+    </properties>
+
+    <dependencies>
+        <!-- ANTLR completo (runtime + org.antlr.v4.gui.TreeViewer + Tool) -->
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4</artifactId>
+            <version>${antlr.version}</version>
+        </dependency>
+        <!-- Runtime do Java CUP (java_cup.runtime.*) -->
+        <dependency>
+            <groupId>com.github.vbmacher</groupId>
+            <artifactId>java-cup-runtime</artifactId>
+            <version>${cup.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- src/main/lib (código comum) é o diretório de fontes principal → target/classes -->
+        <sourceDirectory>src/main/lib</sourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+            </plugin>
+
+            <!--
+              Cada diretório de exercício (src/main/antlr/* e src/main/jflex_cup/*)
+              é compilado SEPARADAMENTE, pois todos usam o pacote padrão e repetem
+              nomes de classes (CalcScanner, Main, ...).
+                - gramáticas *.g4 são geradas pelo ANTLR em target/generated-sources/<ferramenta>/<exercicio>
+                  junto com os .java escritos à mão (os .java já gerados no diretório são ignorados)
+                - saída: target/exercicios/<ferramenta>/<exercicio>
+              Para executar:  java -cp target/classes:target/exercicios/antlr/2calc_variaveis:<deps> Main
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>ant-contrib</groupId>
+                        <artifactId>ant-contrib</artifactId>
+                        <version>1.0b3</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>ant</groupId>
+                                <artifactId>ant</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.antlr</groupId>
+                        <artifactId>antlr4</artifactId>
+                        <version>${antlr.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>compilar-exercicios</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <taskdef resource="net/sf/antcontrib/antlib.xml"
+                                         classpathref="maven.plugin.classpath"/>
+                                <path id="cp.exercicios">
+                                    <pathelement location="${project.build.outputDirectory}"/>
+                                    <path refid="maven.compile.classpath"/>
+                                </path>
+
+                                <for param="dir">
+                                    <path>
+                                        <dirset dir="${basedir}/src/main" includes="antlr/*,jflex_cup/*"/>
+                                    </path>
+                                    <sequential>
+                                        <local name="nome"/>
+                                        <local name="pai"/>
+                                        <local name="ferramenta"/>
+                                        <local name="gen"/>
+                                        <local name="out"/>
+                                        <local name="gramaticas"/>
+                                        <basename property="nome" file="@{dir}"/>
+                                        <dirname property="pai" file="@{dir}"/>
+                                        <basename property="ferramenta" file="${pai}"/>
+                                        <property name="gen"
+                                                  value="${project.build.directory}/generated-sources/${ferramenta}/${nome}"/>
+                                        <property name="out"
+                                                  value="${project.build.directory}/exercicios/${ferramenta}/${nome}"/>
+                                        <mkdir dir="${gen}"/>
+                                        <mkdir dir="${out}"/>
+
+                                        <pathconvert property="gramaticas" pathsep=" ">
+                                            <fileset dir="@{dir}" includes="*.g4"/>
+                                            <flattenmapper/>
+                                        </pathconvert>
+
+                                        <echo message="==> ${ferramenta}/${nome}"/>
+                                        <if>
+                                            <not><equals arg1="${gramaticas}" arg2=""/></not>
+                                            <then>
+                                                <!-- copia os .java escritos à mão (ignora os já gerados pelo ANTLR) -->
+                                                <copy todir="${gen}">
+                                                    <fileset dir="@{dir}" includes="*.java">
+                                                        <not><contains text="// Generated from"/></not>
+                                                    </fileset>
+                                                </copy>
+                                                <java classname="org.antlr.v4.Tool" fork="true" dir="@{dir}"
+                                                      failonerror="true" classpathref="maven.plugin.classpath">
+                                                    <arg value="-o"/>
+                                                    <arg value="${gen}"/>
+                                                    <arg value="-visitor"/>
+                                                    <arg line="${gramaticas}"/>
+                                                </java>
+                                                <javac srcdir="${gen}" destdir="${out}"
+                                                       release="${maven.compiler.release}"
+                                                       encoding="UTF-8" includeantruntime="false"
+                                                       classpathref="cp.exercicios" sourcepath=""/>
+                                            </then>
+                                            <else>
+                                                <javac srcdir="@{dir}" destdir="${out}"
+                                                       release="${maven.compiler.release}"
+                                                       encoding="UTF-8" includeantruntime="false"
+                                                       classpathref="cp.exercicios" sourcepath=""/>
+                                            </else>
+                                        </if>
+                                    </sequential>
+                                </for>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
