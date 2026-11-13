@@ -1,4 +1,4 @@
-lexer grammar CalcScanner;
+lexer grammar CalcLexer;
 
 @header {
 import java.util.Arrays;
@@ -8,7 +8,7 @@ import java.util.Arrays;
   public static void main(String args[]) throws java.io.IOException {
     String[] types = {"PLUS","TIMES","MINUS","DIVIDE","LPAREN","RPAREN"};
 
-    CalcScanner scanner = new CalcScanner(CharStreams.fromFileName(args[0]));
+    CalcLexer scanner = new CalcLexer(CharStreams.fromFileName(args[0]));
     Token token;
 
     while ((token = scanner.nextToken()).getType() != Token.EOF) {
