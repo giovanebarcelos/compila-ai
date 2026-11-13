@@ -31,40 +31,20 @@
     </dependencies>
 
     <build>
-        <!-- src/main/lib (código comum) é o diretório de fontes principal → target/classes -->
+        <!-- código comum -->
         <sourceDirectory>src/main/lib</sourceDirectory>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
-            </plugin>
 
+        <plugins>
             <!--
-              Cada diretório de exercício (src/main/antlr/* e src/main/jflex_cup/*)
-              é compilado SEPARADAMENTE, pois todos usam o pacote padrão e repetem
-              nomes de classes (CalcScanner, Main, ...).
-                - gramáticas *.g4 são geradas pelo ANTLR em target/generated-sources/<ferramenta>/<exercicio>
-                  junto com os .java escritos à mão (os .java já gerados no diretório são ignorados)
-                - saída: target/exercicios/<ferramenta>/<exercicio>
-              Para executar:  java -cp target/classes:target/exercicios/antlr/2calc_variaveis:<deps> Main
+              Gera o código de TODAS as gramáticas src/main/antlr/**/*.g4 em
+              target/generated-sources/antlr4 (pacote padrão, com listener e visitor).
+              Não guarde os .java gerados junto da gramática: dariam classe duplicada.
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <version>3.1.0</version>
                 <dependencies>
-                    <dependency>
-                        <groupId>ant-contrib</groupId>
-                        <artifactId>ant-contrib</artifactId>
-                        <version>1.0b3</version>
-                        <exclusions>
-                            <exclusion>
-                                <groupId>ant</groupId>
-                                <artifactId>ant</artifactId>
-                            </exclusion>
-                        </exclusions>
-                    </dependency>
                     <dependency>
                         <groupId>org.antlr</groupId>
                         <artifactId>antlr4</artifactId>
@@ -73,81 +53,71 @@
                 </dependencies>
                 <executions>
                     <execution>
-                        <id>compilar-exercicios</id>
-                        <phase>compile</phase>
+                        <id>gerar-antlr</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>run</goal>
                         </goals>
                         <configuration>
                             <target>
-                                <taskdef resource="net/sf/antcontrib/antlib.xml"
-                                         classpathref="maven.plugin.classpath"/>
-                                <path id="cp.exercicios">
-                                    <pathelement location="${project.build.outputDirectory}"/>
-                                    <path refid="maven.compile.classpath"/>
-                                </path>
-
-                                <for param="dir">
-                                    <path>
-                                        <dirset dir="${basedir}/src/main" includes="antlr/*,jflex_cup/*"/>
-                                    </path>
-                                    <sequential>
-                                        <local name="nome"/>
-                                        <local name="pai"/>
-                                        <local name="ferramenta"/>
-                                        <local name="gen"/>
-                                        <local name="out"/>
-                                        <local name="gramaticas"/>
-                                        <basename property="nome" file="@{dir}"/>
-                                        <dirname property="pai" file="@{dir}"/>
-                                        <basename property="ferramenta" file="${pai}"/>
-                                        <property name="gen"
-                                                  value="${project.build.directory}/generated-sources/${ferramenta}/${nome}"/>
-                                        <property name="out"
-                                                  value="${project.build.directory}/exercicios/${ferramenta}/${nome}"/>
-                                        <mkdir dir="${gen}"/>
-                                        <mkdir dir="${out}"/>
-
-                                        <pathconvert property="gramaticas" pathsep=" ">
-                                            <fileset dir="@{dir}" includes="*.g4"/>
-                                            <flattenmapper/>
-                                        </pathconvert>
-
-                                        <echo message="==> ${ferramenta}/${nome}"/>
-                                        <if>
-                                            <not><equals arg1="${gramaticas}" arg2=""/></not>
-                                            <then>
-                                                <!-- copia os .java escritos à mão (ignora os já gerados pelo ANTLR) -->
-                                                <copy todir="${gen}">
-                                                    <fileset dir="@{dir}" includes="*.java">
-                                                        <not><contains text="// Generated from"/></not>
-                                                    </fileset>
-                                                </copy>
-                                                <java classname="org.antlr.v4.Tool" fork="true" dir="@{dir}"
-                                                      failonerror="true" classpathref="maven.plugin.classpath">
-                                                    <arg value="-o"/>
-                                                    <arg value="${gen}"/>
-                                                    <arg value="-visitor"/>
-                                                    <arg line="${gramaticas}"/>
-                                                </java>
-                                                <javac srcdir="${gen}" destdir="${out}"
-                                                       release="${maven.compiler.release}"
-                                                       encoding="UTF-8" includeantruntime="false"
-                                                       classpathref="cp.exercicios" sourcepath=""/>
-                                            </then>
-                                            <else>
-                                                <javac srcdir="@{dir}" destdir="${out}"
-                                                       release="${maven.compiler.release}"
-                                                       encoding="UTF-8" includeantruntime="false"
-                                                       classpathref="cp.exercicios" sourcepath=""/>
-                                            </else>
-                                        </if>
-                                    </sequential>
-                                </for>
+                                <property name="antlr.out" value="${project.build.directory}/generated-sources/antlr4"/>
+                                <mkdir dir="${antlr.out}"/>
+                                <apply executable="${java.home}/bin/java" parallel="true"
+                                       failonerror="true" skipemptyfilesets="true">
+                                    <arg value="-cp"/>
+                                    <arg pathref="maven.plugin.classpath"/>
+                                    <arg value="org.antlr.v4.Tool"/>
+                                    <arg value="-o"/>
+                                    <arg value="${antlr.out}"/>
+                                    <arg value="-lib"/>
+                                    <arg value="${antlr.out}"/>
+                                    <arg value="-Xexact-output-dir"/>
+                                    <arg value="-visitor"/>
+                                    <arg value="-encoding"/>
+                                    <arg value="UTF-8"/>
+                                    <fileset dir="${basedir}/src/main/antlr" includes="**/*.g4"/>
+                                </apply>
                             </target>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!--
+              Todos os diretórios de exercício são compilados juntos (pacote padrão)
+              e vão para target/classes. Por isso os nomes de classe NÃO podem se
+              repetir entre os diretórios.
+              Ao criar um exercício novo, acrescente o diretório na lista abaixo
+              e recarregue o Maven no IntelliJ.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>add-exercicios</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/main/java</source>
+                                <source>${project.build.directory}/generated-sources/antlr4</source>
+                                <source>src/main/antlr/1calc</source>
+                                <source>src/main/antlr/2calc_variaveis</source>
+                                <source>src/main/jflex_cup/1calc</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
             </plugin>
         </plugins>
     </build>
